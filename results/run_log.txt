@@ -1,0 +1,64 @@
+Data: {"city": "Delhi", "train_samples": 3115, "test_samples": 1026, "n_features": 32}
+Default RF walk-forward CV RMSE: 41.516
+  Random search seed 3: CV RMSE 40.621 in 706.2s
+  Random search seed 2: CV RMSE 40.975 in 707.4s
+  Random search seed 4: CV RMSE 40.041 in 736.3s
+  Random search seed 1: CV RMSE 40.836 in 736.7s
+  Random search seed 0: CV RMSE 40.236 in 743.7s
+  PSO seed 1: CV RMSE 40.415 in 849.4s
+  PSO seed 2: CV RMSE 39.969 in 909.2s
+  PSO seed 0: CV RMSE 39.729 in 1132.5s
+  PSO seed 3: CV RMSE 39.787 in 1476.5s
+  PSO seed 4: CV RMSE 39.808 in 1486.4s
+Selected PSO hyperparameters: {'n_estimators': 224, 'max_depth': 18, 'min_samples_split': 8, 'min_samples_leaf': 2, 'max_features': 0.799, 'max_samples': 0.592}
+Selected 14 of 32 features: ['AQI', 'temp_max', 'rain', 'wind_max', 'radiation', 'wind_dir_sin', 'wind_dir_cos', 'AQI_lag_1', 'AQI_roll_mean_3', 'AQI_roll_mean_30', 'AQI_change_1', 'wind_mean_change_1', 'rain_3d', 'dow_cos']
+                    Persistence  Default RF  PSO RF (hyperparameters only)  PSO-tuned RF
+RMSE                     40.208      33.853                         33.570        33.768
+MAE                      28.970      25.381                         25.135        25.146
+MedAE                    21.000      19.390                         18.872        18.082
+MAPE_pct                 17.157      15.892                         15.738        15.651
+R2                        0.832       0.881                          0.883         0.882
+Accuracy                  0.688       0.719                          0.715         0.714
+Precision_macro           0.547       0.607                          0.611         0.622
+Recall_macro              0.548       0.555                          0.552         0.552
+F1_macro                  0.548       0.568                          0.566         0.569
+F1_weighted               0.688       0.720                          0.716         0.715
+AUC_high_pollution        0.978       0.986                          0.987         0.986
+{
+ "cv_improvement_pct": 4.304894984917774,
+ "rmse_improvement_pct": 0.2524834831914053,
+ "bootstrap_tuned_vs_default": {
+  "observed_gain": 0.08547384781133616,
+  "ci95": [
+   -0.4144686336570551,
+   0.5940411393855621
+  ],
+  "prob_gain_positive": 0.6172
+ },
+ "bootstrap_tuned_vs_hp_only": {
+  "observed_gain": -0.1977047832441201,
+  "ci95": [
+   -0.6657984822347673,
+   0.2649701304444436
+  ],
+  "prob_gain_positive": 0.1992
+ },
+ "pso_summary": {
+  "cv_rmse_mean": 39.94153884329135,
+  "cv_rmse_best": 39.72880777215137,
+  "test_rmse_mean": 33.471000000000004,
+  "test_rmse_sd_between_runs": 0.21785660421479225
+ },
+ "random_search_summary": {
+  "cv_rmse_mean": 40.5418325336139,
+  "cv_rmse_best": 40.041276681782186,
+  "test_rmse_mean": 33.9574,
+  "test_rmse_sd_between_runs": 0.3290095743287717
+ },
+ "pso_hp_only_summary": {
+  "cv_rmse_mean": 40.700677224703966,
+  "cv_rmse_best": 40.65764585727106,
+  "test_rmse_mean": 33.5498,
+  "test_rmse_sd_between_runs": 0.04473477394600383
+ }
+}

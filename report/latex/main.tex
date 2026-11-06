@@ -1,0 +1,198 @@
+% Bio-Inspired Algorithms (23DS7BSBIO) AAT report.
+% Layout follows the department's BIO_LAB_REPORT template.
+% Build:  tectonic main.tex
+\documentclass[12pt,a4paper]{report}
+
+%---------------------------------------------------------------- team details
+% Edit these lines; everything else picks them up.
+\newcommand{\ProjectTitle}{Air Quality Index Prediction Using Random Forest Optimized with Particle Swarm Optimization (PSO)}
+\newcommand{\GuideName}{Dr.~Kalyan N}
+\newcommand{\GuideDesignation}{Assistant Professor}
+\newcommand{\HODName}{Dr.~Shyamala G}
+\newcommand{\AcademicYear}{AY 2026-2027}
+\newcommand{\StudentList}{%
+  Hemanth Raj MV (1BM23CD022)\\[2pt]
+  Kushal KV (1BM23CD030)\\[2pt]
+  Rohan R (1BM23CD051)\\[2pt]
+  Shakthi Jashwanth C H (1BM23CD072)}
+\newcommand{\StudentRows}{%
+  1 & Hemanth Raj MV & 1BM23CD022 & \\ \hline
+  2 & Kushal KV & 1BM23CD030 & \\ \hline
+  3 & Rohan R & 1BM23CD051 & \\ \hline
+  4 & Shakthi Jashwanth C H & 1BM23CD072 & \\ \hline}
+
+%---------------------------------------------------------------- packages
+\usepackage[a4paper,left=2cm,right=2cm,top=2.6cm,bottom=2.6cm,footskip=1.1cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{eso-pic}
+\usepackage{setspace}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{tocloft}
+\usepackage{url}
+
+\setstretch{1.25}
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0pt}
+
+% Equation, table and figure numbers run 1, 2, 3 ... through the whole report.
+\renewcommand{\theequation}{\arabic{equation}}
+\renewcommand{\thetable}{\arabic{table}}
+\renewcommand{\thefigure}{\arabic{figure}}
+\captionsetup{labelsep=colon,font=normalsize,skip=4pt}
+\captionsetup[table]{position=top}
+
+% Section headings: "0.1  Introduction" bold, "0.1.1  Background" bold italic.
+\titleformat{\section}{\normalfont\normalsize\bfseries}{\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{14pt}{8pt}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries\itshape}{\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+\titleformat{\subsubsection}[block]{\normalfont\normalsize\bfseries\itshape}{}{0pt}{}
+\titlespacing*{\subsubsection}{0pt}{8pt}{2pt}
+\newcommand{\topic}[1]{\subsubsection*{#1}}
+\newcommand{\lead}[1]{\par\hspace*{1.5em}\textbf{#1}}
+
+\setlist[itemize]{itemsep=6pt,topsep=6pt,label=\textbullet}
+\setlist[enumerate]{itemsep=6pt,topsep=6pt}
+
+% Rounded grey frame on every page.
+\AddToShipoutPictureBG{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \draw[line width=2.2pt,color=black!60,rounded corners=9pt]
+      ([xshift=0.45cm,yshift=-0.45cm]current page.north west)
+      rectangle ([xshift=-0.45cm,yshift=0.45cm]current page.south east);
+  \end{tikzpicture}}
+
+% Footer: department name centred, page number at the right.
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\small Department of CSE(Data Science)}
+\fancyfoot[R]{\small\thepage}
+\fancypagestyle{plain}{\fancyhf{}\renewcommand{\headrulewidth}{0pt}%
+  \fancyfoot[C]{\small Department of CSE(Data Science)}\fancyfoot[R]{\small\thepage}}
+
+% Contents and list of figures headings centred like the template.
+\renewcommand{\cfttoctitlefont}{\hfill\large\bfseries}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\renewcommand{\cftloftitlefont}{\hfill\large\bfseries}
+\renewcommand{\cftafterloftitle}{\hfill}
+\renewcommand{\cftlottitlefont}{\hfill\large\bfseries}
+\renewcommand{\cftafterlottitle}{\hfill}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\setlength{\cftbeforesecskip}{2pt}
+\setlength{\cftbeforetoctitleskip}{-0.6cm}
+\setlength{\cftbeforeloftitleskip}{-0.6cm}
+\setlength{\cftaftertoctitleskip}{0.8cm}
+\setlength{\cftafterloftitleskip}{0.8cm}
+
+\newcommand{\collegeheader}{%
+  {\color{blue}\fontsize{17.28}{21}\selectfont\bfseries B.M.S. COLLEGE OF ENGINEERING}\\[8pt]
+  {\large\bfseries (Autonomous College under VTU)}\\[8pt]
+  {\large\bfseries Bull Temple Road, Basavangudi, Bangalore - 560019}}
+
+\algrenewcommand\algorithmicrequire{\textbf{Input:}}
+\algrenewcommand\algorithmicensure{\textbf{Output:}}
+
+\begin{document}
+
+%================================================================ title page
+\begin{titlepage}
+\centering
+\vspace*{-0.9cm}
+\collegeheader\\[14pt]
+\includegraphics[width=4.4cm]{bms_logo.png}\\[12pt]
+{\itshape Bio Inspired Algorithms AAT on}\\[8pt]
+{\color{red}\bfseries \ProjectTitle}\\[8pt]
+{\itshape in fulfillment of the requirements for the award of degree}\\[8pt]
+{\bfseries BACHELOR OF ENGINEERING}\\[5pt]
+{\itshape in}\\[5pt]
+{\bfseries Computer Science \& Engineering (Data Science)}\\[5pt]
+{\itshape by}\\[6pt]
+{\bfseries \StudentList}\\[12pt]
+{\bfseries Under the Guidance of}\\[5pt]
+{\bfseries \GuideName}\\[3pt]
+\GuideDesignation\\[12pt]
+{\bfseries Department of CSE (Data Science)},\\[3pt]
+{\bfseries B.M.S. College of Engineering}\\[8pt]
+{\bfseries \AcademicYear}
+\end{titlepage}
+
+%================================================================ certificate
+\setcounter{page}{1}
+\begin{center}
+\vspace*{-1.2cm}
+\collegeheader\\[8pt]
+\includegraphics[width=2.6cm]{bms_logo.png}\\[8pt]
+{\bfseries Department of Computer Science and Engineering}\\[4pt]
+{\bfseries (Data Science)}\\[4pt]
+{\fontsize{17.28}{21}\selectfont\bfseries\underline{CERTIFICATE}}
+\end{center}
+\noindent This is to certify that the project entitled \textbf{``\ProjectTitle''} is a bona fide work carried out by the following students for the course Bio Inspired Algorithms (Course Code: \textbf{23DS7BSBIO}). It is certified that all corrections and suggestions indicated during the internal assessments have been incorporated in the final report submitted to the departmental library. The project report has been approved as it meets the academic requirements prescribed for the Bachelor of Engineering Degree in respect of project work.
+
+\begin{center}
+\textbf{\underline{Candidate details}}\\[4pt]
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{|c|p{5.6cm}|c|c|}
+\hline
+\textbf{SL. NO.} & \textbf{Student Name} & \textbf{USN} & \textbf{Student's Signature} \\ \hline
+\StudentRows
+\end{tabular}
+\end{center}
+\vspace{4pt}
+\noindent\begin{minipage}[t]{0.5\textwidth}
+\textbf{Signature of the Guide}\\[6pt]
+\textbf{\GuideName}\\
+\GuideDesignation
+\end{minipage}%
+\begin{minipage}[t]{0.5\textwidth}\raggedleft
+\textbf{Signature of the HOD}\\[6pt]
+\textbf{\HODName}\\
+Professor \& HOD
+\end{minipage}
+
+\vspace{8pt}
+\begin{center}\textbf{Examiners}\end{center}\vspace{-6pt}
+\noindent\textbf{Name of Examiner}\hfill\textbf{Signature of the examiner}\\[6pt]
+\textbf{1.}\hfill\rule{4.6cm}{0.4pt}\\[6pt]
+\textbf{2.}\hfill\rule{4.6cm}{0.4pt}
+\clearpage
+
+%================================================================ acknowledgements
+\begin{center}{\large\bfseries Acknowledgements}\end{center}
+\addcontentsline{toc}{chapter}{Acknowledgements}
+\noindent We would take this opportunity to express our heart-felt gratitude to \textbf{Dr.B. S. Ragini Narayan}, \textit{Chairperson}, Donor Trustee, Member Secretary \& Chairperson, BMSET. \textbf{Dr. P. Dayananda Pai}, \textit{Member Life Trustee}, BMSET and \textbf{Dr. Bheemsha Arya}, \textit{Principal}, B.M.S. College of Engineering for providing the necessary infrastructure to complete this Alternative Assessment.\\
+We wish to express our deepest gratitude to \textbf{\HODName}, Head of the Department, Computer Science and Engineering(Data Science) and the Project Guide \textbf{\GuideName} for their constant support.\\
+A warm thanks to all the faculty of the Department of Computer Science and Engineering(Data Science), who have helped us with their views and encouraging ideas.
+\clearpage
+
+%================================================================ contents
+\tableofcontents
+\clearpage
+\listoffigures
+\clearpage
+
+%================================================================ abstract
+\thispagestyle{empty}
+\vspace*{\fill}
+\begin{center}{\bfseries Abstract}\end{center}
+\input{abstract}
+\vspace*{\fill}
+\clearpage
+
+%================================================================ body
+\setcounter{page}{1}
+\input{body}
+
+\end{document}

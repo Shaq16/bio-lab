@@ -1,0 +1,259 @@
+%================================================================ 0.5
+\section{Methodology and Implementation}
+
+\subsection{System Architecture}
+Our system comprises five major components:
+\begin{enumerate}
+\item Data Collection Module: CPCB AQI bulletins and ERA5 weather
+\item Preprocessing and Feature Engineering Pipeline
+\item Random Forest Regression Model
+\item Particle Swarm Optimization Framework (hyperparameters and feature selection)
+\item Evaluation and Visualization Suite
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=0.55cm, box/.style={draw, rounded corners=3pt, minimum width=3.3cm, minimum height=0.9cm, align=center, font=\small}, arr/.style={-latex, thick}]
+\node[box] (a) {CPCB AQI\\bulletins};
+\node[box, below=of a] (b) {ERA5 daily\\weather};
+\node[box, right=0.9cm of a, yshift=-0.72cm] (c) {Cleaning \&\\feature engineering};
+\node[box, right=0.9cm of c] (d) {Chronological split\\train $\mid$ test};
+\node[box, below=0.9cm of d] (e) {PSO search over\\RF settings + features};
+\node[box, left=0.9cm of e] (f) {Walk-forward CV\\fitness (RMSE)};
+\node[box, below=0.9cm of e] (g) {Final tuned RF\\refit on train};
+\node[box, left=0.9cm of g] (h) {Evaluation on\\held-out test};
+\draw[arr] (a) -- (c); \draw[arr] (b) -- (c); \draw[arr] (c) -- (d);
+\draw[arr] (d) -- (e); \draw[arr] (e.west) -- (f.east);
+\draw[arr] (f.north) to[bend left=25] node[left,font=\scriptsize]{score} ([xshift=-0.6cm]e.north west);
+\draw[arr] (e) -- (g); \draw[arr] (g) -- (h);
+\end{tikzpicture}
+\caption{System architecture of the PSO-optimized Random Forest pipeline}
+\end{figure}
+
+\subsection{Data Collection}
+
+\topic{City Selection}
+Delhi was selected because:
+\begin{itemize}
+\item It is the most polluted major city in the CPCB network, with strong seasonal swings
+\item Its daily AQI record is long and nearly complete (26 missing days in 11.5 years)
+\item Forecasts there have the largest public-health value
+\end{itemize}
+
+\topic{Data Sources and Period}
+\begin{table}[H]
+\centering
+\caption{Data sources}
+\begin{tabular}{|p{5.2cm}|p{5.6cm}|p{4.6cm}|}
+\hline
+\textbf{Source} & \textbf{Variables} & \textbf{Coverage} \\ \hline
+CPCB daily AQI bulletins \cite{cpcb2014,urbanemissions} & City AQI, category, prominent pollutant & 1 May 2015 -- 25 Oct 2026; 4,170 reported days \\ \hline
+ERA5 reanalysis via Open-Meteo \cite{hersbach2020,openmeteo} & Temperature, rain, humidity, wind, pressure, radiation, dew point & 1 Apr 2015 -- 25 Oct 2026; complete \\ \hline
+\end{tabular}
+\end{table}
+The bulletin AQI is the official city value published by CPCB each day, averaged over Delhi's monitoring stations. The weather is taken at central Delhi (28.61\,N, 77.21\,E).
+
+This period captures several distinct regimes:
+\begin{itemize}
+\item High-pollution years (2015--2019)
+\item The COVID-19 lockdown and recovery (2020--2021)
+\item Recent years under the National Clean Air Programme (2022--2026)
+\end{itemize}
+
+\topic{Data Validation}
+The bulletin AQI was cross-checked against the independent Kaggle ``Air Quality Data in India (2015--2020)'' dataset over their 1,856 common days. The two series have a correlation of 0.927, which confirms that the bulletin values are consistent.
+
+\subsection{Data Preprocessing}
+
+\topic{Missing Value Treatment}
+\begin{itemize}
+\item AQI: 26 of 4,196 calendar days (0.6\%) have no bulletin
+\item Weather: no missing values
+\item Input features: forward fill, which uses only the last value known at prediction time
+\item Target: never imputed; the 26 days with no observed AQI are removed as targets
+\end{itemize}
+Linear interpolation was avoided on purpose: it would use the next observation and leak future information into the features.
+
+\topic{Normalization}
+No scaling is applied to the Random Forest, because tree splits do not depend on feature scale. The linear and kernel baselines use standard scaling fitted on the training period only:
+\begin{equation}
+z = \frac{x - \mu_{train}}{\sigma_{train}}
+\end{equation}
+
+\subsection{Feature Engineering}
+All features for day $t$ use only information available at the end of day $t$. A total of 32 features are created.
+
+\lead{AQI History Features:}
+\begin{itemize}
+\item Current AQI and lags: $AQI_t, AQI_{t-1}, AQI_{t-2}, AQI_{t-3}, AQI_{t-7}$
+\item Rolling means over 3, 7, 14 and 30 days
+\item 7-day rolling standard deviation
+\item Day-on-day change: $\Delta AQI_t = AQI_t - AQI_{t-1}$
+\end{itemize}
+\begin{equation}
+\overline{AQI}_n(t) = \frac{1}{n}\sum_{i=0}^{n-1} AQI_{t-i}
+\end{equation}
+
+\lead{Weather Features:}
+\begin{itemize}
+\item Temperature (maximum, minimum, mean), dew point, relative humidity
+\item Rainfall, and 3-day rainfall total
+\item Wind speed (mean, maximum) and dominant wind direction
+\item Surface pressure and shortwave radiation
+\item Day-on-day change in minimum temperature, pressure, dew point and wind speed
+\end{itemize}
+Wind direction is circular, so it is encoded as sine and cosine:
+\begin{equation}
+(\sin\phi,\ \cos\phi), \qquad \phi = \text{direction in radians}
+\end{equation}
+
+\lead{Calendar Features:}
+The day of year and day of week of the \emph{forecast} day are encoded cyclically:
+\begin{equation}
+doy_{sin} = \sin\!\left(\frac{2\pi\, d}{365.25}\right), \qquad doy_{cos} = \cos\!\left(\frac{2\pi\, d}{365.25}\right)
+\end{equation}
+This makes 31 December and 1 January neighbours.
+
+\subsection{Random Forest Model Architecture}
+
+\topic{Model Design}
+\begin{itemize}
+\item Input: 32 features for day $t$
+\item Ensemble: $B$ regression trees (CART), each on a bootstrap sample
+\item Split criterion: squared error
+\item Output: the average of all tree predictions, the forecast AQI for day $t+1$
+\end{itemize}
+
+\topic{Why Random Forest}
+\begin{itemize}
+\item Captures non-linear effects and interactions between weather and pollution
+\item Robust to correlated inputs such as lags and rolling means
+\item Needs no feature scaling
+\item Works well with about 3,000 training samples, where deep networks overfit easily
+\item Provides feature importances for interpretation
+\end{itemize}
+
+\subsection{PSO Implementation}
+
+\topic{Particle Representation}
+Each particle is a 38-dimensional vector in the unit hypercube:
+\begin{equation}
+\mathbf{x} = [u_{trees}, u_{depth}, u_{split}, u_{leaf}, u_{features}, u_{samples}, u_{f_1}, \dots, u_{f_{32}}] \in [0,1]^{38}
+\end{equation}
+Implemented as a NumPy array. The hyperparameter part is decoded by:
+\begin{verbatim}
+def decode(position, space=SEARCH_SPACE):
+    params = {}
+    for u, p in zip(position, space):
+        value = p.low + float(u) * (p.high - p.low)
+        params[p.name] = int(round(value)) if p.integer \
+                         else round(value, 3)
+    return params
+\end{verbatim}
+
+The feature switches are decoded by:
+\begin{verbatim}
+def decode_solution(position, feature_names):
+    params = decode(position[:6])
+    switches = position[6:]
+    keep = switches >= 0.5            # threshold transfer
+    if keep.sum() < 3:                # never an empty model
+        keep = np.zeros(len(switches), bool)
+        keep[np.argsort(-switches)[:3]] = True
+    return params, [f for f, k in zip(feature_names, keep) if k]
+\end{verbatim}
+
+\topic{Swarm Initialization}
+A swarm of 12 particles is created with:
+\begin{itemize}
+\item Positions drawn uniformly from $[0,1]^{38}$, so each feature starts switched on with probability 0.5
+\item Velocities drawn uniformly from $[-v_{max}, v_{max}]^{38}$
+\item A seeded random number generator, so every run is reproducible
+\end{itemize}
+
+\topic{Fitness Evaluation}
+The fitness of a particle is the mean RMSE over 5 expanding-window folds of the training period, using only the features the particle switches on:
+\begin{equation}
+F(\mathbf{x}) = \frac{1}{5}\sum_{k=1}^{5} RMSE\big(RF_{\theta(\mathbf{x})}\ \text{trained on folds } 1..k,\ \text{validated on fold } k+1\big)
+\end{equation}
+The model is always trained on earlier days and validated on later days. Identical decoded solutions (the same hyperparameters and the same feature subset) are cached, so the same configuration is never trained twice.
+
+\topic{Velocity and Position Update}
+\begin{verbatim}
+def update_velocity(self, v, x, pbest, gbest, w):
+    r1 = self.rng.random(x.shape)
+    r2 = self.rng.random(x.shape)
+    cognitive = self.cfg.c1 * r1 * (pbest - x)
+    social = self.cfg.c2 * r2 * (gbest - x)
+    return np.clip(w * v + cognitive + social,
+                   -self.cfg.v_max, self.cfg.v_max)
+
+def update_position(x, v):
+    x_new = x + v
+    for _ in range(2):          # reflect off the walls
+        below, above = x_new < 0.0, x_new > 1.0
+        x_new = np.where(below, -x_new, x_new)
+        x_new = np.where(above, 2.0 - x_new, x_new)
+        v = np.where(below | above, -v, v)
+    return np.clip(x_new, 0.0, 1.0), v
+\end{verbatim}
+
+\topic{Best Updates}
+After each evaluation:
+\begin{equation}
+\mathbf{p}_i \gets \mathbf{x}_i \ \text{ if } F(\mathbf{x}_i) < F(\mathbf{p}_i), \qquad \mathbf{g} \gets \arg\min_i F(\mathbf{p}_i)
+\end{equation}
+
+\topic{Termination Criteria}
+The algorithm stops after 25 iterations, which gives $12 \times (25 + 1) = 312$ fitness evaluations per run.
+
+\subsection{Training Procedure}
+
+\topic{Data Splitting}
+\begin{itemize}
+\item Training: 3,115 days (30 May 2015 -- 31 December 2023), used for model fitting and all PSO tuning
+\item Testing: 1,026 days (1 January 2024 -- 24 October 2026), used only for final evaluation
+\end{itemize}
+Temporal ordering is preserved, with no shuffling. The first 29 days are dropped because the 30-day rolling mean is incomplete.
+
+\topic{Optimization Process}
+For each of 5 independent PSO runs (seeds 0 to 4):
+\begin{algorithmic}
+\State Initialize the swarm
+\For{each iteration}
+  \State Decode every particle into RF hyperparameters
+  \State Train RF on each walk-forward fold and record mean validation RMSE
+  \State Update personal bests, global best, velocities and positions
+\EndFor
+\State Record the best configuration, its feature subset and its validation RMSE
+\end{algorithmic}
+The run with the lowest validation RMSE is selected; this rule was fixed before any test result was seen. Its hyperparameters and feature subset are refit on the full training period and evaluated once on the test period.
+
+\subsection{Implementation Details}
+
+\topic{Technology Stack}
+\begin{itemize}
+\item Python: 3.11
+\item scikit-learn: 1.9 (Random Forest, metrics, baselines)
+\item NumPy 2.4 and pandas 3.1: data handling and the PSO implementation
+\item SciPy 1.17: statistical tests
+\item Matplotlib 3.11: visualization
+\item joblib: parallel execution of independent runs
+\item pytest: automated tests
+\end{itemize}
+
+\topic{Computational Resources}
+\begin{itemize}
+\item CPU: Apple M5 Pro, 15 cores
+\item RAM: 24 GB
+\item GPU: not required
+\end{itemize}
+
+\topic{Reproducibility}
+Ensured through:
+\begin{itemize}
+\item Fixed random seeds for PSO, random search and every forest
+\item Configuration in a single file (\texttt{aqipso/config.py})
+\item Version-pinned requirements
+\item 16 automated tests, including checks that no feature uses future data and that the feature switches decode correctly
+\end{itemize}

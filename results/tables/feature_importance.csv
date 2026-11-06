@@ -1,0 +1,15 @@
+,importance
+AQI,0.6347
+AQI_roll_mean_3,0.1758
+AQI_lag_1,0.0318
+wind_max,0.0287
+AQI_roll_mean_30,0.0243
+wind_mean_change_1,0.019
+radiation,0.0173
+rain,0.0157
+wind_dir_sin,0.0136
+rain_3d,0.0094
+wind_dir_cos,0.0094
+AQI_change_1,0.009
+temp_max,0.009
+dow_cos,0.0024

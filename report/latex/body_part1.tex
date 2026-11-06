@@ -1,0 +1,360 @@
+%================================================================ 0.1
+\section{Introduction}
+
+\subsection{Background and Motivation}
+Air pollution is one of the most serious public health problems in India, and Delhi is its most visible example. The Central Pollution Control Board (CPCB) reports a daily National Air Quality Index (AQI) for each monitored city, on a scale from 0 to 500 divided into six categories, from \emph{Good} to \emph{Severe} \cite{cpcb2014}. Between May 2015 and October 2026, Delhi's official daily AQI averaged 211 (\emph{Poor}) and exceeded 300 (\emph{Very Poor} or worse) on 945 of 4,170 reported days (22.7\%). Monthly means range from 99 in August to 351 in November.
+
+A forecast of tomorrow's AQI is valuable because it gives time to act before the pollution arrives:
+\begin{itemize}
+\item Hospitals and individuals with respiratory illness can prepare in advance.
+\item Schools and outdoor workers can adjust their schedules.
+\item Authorities can trigger graded emergency measures one day earlier.
+\end{itemize}
+
+Delhi's air quality is hard to forecast because it depends on several interacting factors:
+\begin{itemize}
+\item Strong seasonality, with severe smog from October to February
+\item Meteorology: low temperature, high pressure and weak wind trap pollutants near the ground \cite{guttikunda2012}
+\item Episodic sources such as crop-residue burning and festival fireworks
+\item Day-to-day persistence combined with sudden jumps and drops
+\end{itemize}
+
+Machine learning models can learn these non-linear relationships from historical data. Their accuracy, however, depends heavily on hyperparameters, which are usually chosen by hand.
+
+\subsection{Problem Statement}
+A Random Forest \cite{breiman2001} is well suited to tabular environmental data, but its performance depends on several interacting hyperparameters: the number of trees, tree depth, leaf size, split size, feature sampling and sample fraction. Manual tuning of these hyperparameters is:
+\begin{itemize}
+\item Time-consuming, because each trial requires training several forests
+\item Prone to human bias and limited exploration of the search space
+\item Inefficient, since grid search grows exponentially with the number of hyperparameters
+\end{itemize}
+
+This project addresses the problem of automatically tuning a Random Forest for next-day AQI forecasting in Delhi using Particle Swarm Optimization (PSO), a nature-inspired metaheuristic based on the collective behaviour of bird flocks \cite{kennedy1995}.
+
+Formally, given the AQI history and weather up to the end of day $t$, the task is to predict the officially reported AQI of day $t+1$. Predicting the same day's AQI from that day's pollutant readings is avoided on purpose: AQI is computed directly from those readings, so such a model would only relearn the CPCB formula.
+
+\subsection{Research Objectives}
+The primary objectives of this project are:
+\begin{enumerate}
+\item Build a leakage-free forecasting dataset from official CPCB AQI bulletins and ERA5 weather reanalysis for Delhi, 2015 to 2026
+\item Establish unoptimized baselines: persistence and a default Random Forest
+\item Implement PSO from first principles, including velocity update, inertia scheduling, velocity clamping and boundary handling
+\item Use PSO to tune six Random Forest hyperparameters and select the input features at the same time, against walk-forward validation error
+\item Measure what feature selection adds by comparing against a hyperparameter-only PSO (ablation)
+\item Evaluate the tuned model with regression, category and alert metrics, and test whether the improvement is statistically significant
+\item Compare PSO against random search with the same evaluation budget, and against traditional regression models
+\end{enumerate}
+
+\subsection{Contributions}
+This work makes the following contributions:
+\begin{itemize}
+\item A reproducible end-to-end pipeline for PSO-optimized Random Forest AQI forecasting
+\item A dataset combining 11.5 years of official CPCB AQI bulletins for Delhi with daily ERA5 weather
+\item A from-scratch PSO implementation, verified on standard benchmark functions
+\item A joint PSO search over hyperparameters and features (38 dimensions), with an ablation over the hyperparameters alone that isolates what feature selection adds
+\item An honest evaluation that includes a random-search control, traditional-model comparison, block-bootstrap confidence intervals and paired significance tests
+\item Open, tested and documented source code
+\end{itemize}
+
+\subsection{Report Organization}
+The remainder of this report is organized as follows. Section 0.2 reviews related literature. Section 0.3 gives the theoretical background on time series forecasting, Random Forests, the AQI and evaluation metrics. Section 0.4 presents a detailed study of nature-inspired algorithms. Section 0.5 describes the methodology and implementation. Section 0.6 details the experimental setup and test functions. Section 0.7 presents results and discussion, and Sections 0.8 and 0.9 give the conclusion and future work.
+
+%================================================================ 0.2
+\section{Literature Review}
+
+\subsection{Air Quality Forecasting Techniques}
+Early air quality forecasting relied on statistical time series methods. The ARIMA family of Box and Jenkins \cite{boxjenkins} models a series as a linear function of its own past values and past errors. These models work well for linear, stationary behaviour but struggle with the non-linear, weather-driven dynamics of urban pollution.
+
+Physical chemistry-transport models simulate emissions, transport and chemistry directly. They are physically grounded but computationally expensive, and they depend on accurate emission inventories, which are uncertain for Indian cities.
+
+\subsection{Machine Learning for Air Quality Prediction}
+Data-driven models learn the mapping from recent pollution and weather to future pollution directly from data. Tree ensembles such as Random Forests \cite{breiman2001} handle non-linear effects, interactions and correlated inputs without feature scaling, and they work well on the few thousand daily samples typical of city-level records. Recurrent neural networks such as LSTMs \cite{hochreiter1997} can model long sequences but need more data and careful tuning.
+
+Meteorology is a key driver of pollution episodes in Delhi. Winter inversions, low wind speed and low mixing heights trap emissions near the surface \cite{guttikunda2012}, so weather variables are essential inputs to a forecasting model.
+
+\subsection{Hyperparameter Optimization Methods}
+Hyperparameter optimization has evolved from manual and grid search to more efficient methods. Bergstra and Bengio \cite{bergstra2012} showed that random search is more efficient than grid search when only a few hyperparameters matter. Bayesian optimization \cite{snoek2012} builds a surrogate model of the objective to choose promising configurations. Probst et al.\ \cite{probst2019} studied Random Forest tuning specifically and found that the number of features tried at each split, the sample fraction and the minimum node size are the most influential hyperparameters.
+
+Population-based metaheuristics such as Genetic Algorithms \cite{holland1975}, Differential Evolution \cite{storn1997} and PSO \cite{kennedy1995} need no gradient, tolerate noisy objectives and handle mixed integer and continuous search spaces.
+
+\subsection{Particle Swarm Optimization in Applications}
+Since its introduction by Kennedy and Eberhart \cite{kennedy1995}, PSO has been widely used for continuous optimization and for tuning machine learning models. Shi and Eberhart \cite{shi1998} added the inertia weight, which controls the balance between exploration and exploitation. Clerc and Kennedy \cite{clerc2002} analysed the stability and convergence of the swarm and proposed the constriction factor.
+
+\subsection{Research Gap}
+While Random Forests and PSO are both well established, limited published work combines:
+\begin{itemize}
+\item PSO tuning of Random Forests for next-day AQI forecasting in Indian cities
+\item Official CPCB bulletin AQI combined with reanalysis weather over a long, recent period (2015 to 2026)
+\item Strictly chronological, leakage-free evaluation with an equal-budget random-search control
+\item Statistical testing of whether optimization gains are significant
+\end{itemize}
+This project addresses these gaps for Delhi.
+
+%================================================================ 0.3
+\section{Theoretical Background}
+
+\subsection{Time Series Forecasting}
+A time series is a sequence of observations $\{x_1, x_2, \dots, x_t\}$ indexed by time. One-step-ahead forecasting predicts the next value from information available up to time $t$:
+\begin{equation}
+\hat{y}_{t+1} = f(\mathbf{x}_t, \mathbf{x}_{t-1}, \dots, \mathbf{x}_{t-w+1}; \theta)
+\end{equation}
+where $w$ is the look-back window, $\mathbf{x}$ contains AQI history and weather, and $\theta$ represents model parameters.
+
+The simplest forecast is \emph{persistence}, which assumes tomorrow equals today:
+\begin{equation}
+\hat{y}_{t+1} = y_t
+\end{equation}
+Any useful model must beat this baseline.
+
+\subsection{National Air Quality Index}
+The CPCB AQI \cite{cpcb2014} converts each pollutant concentration $C_p$ into a sub-index by linear interpolation between breakpoints:
+\begin{equation}
+I_p = \frac{I_{hi} - I_{lo}}{BP_{hi} - BP_{lo}}\,(C_p - BP_{lo}) + I_{lo}
+\end{equation}
+where $BP_{lo} \le C_p \le BP_{hi}$ are the concentration breakpoints and $I_{lo}, I_{hi}$ the corresponding index values. The overall AQI is the largest sub-index:
+\begin{equation}
+AQI = \max_p I_p
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{CPCB AQI categories}
+\begin{tabular}{|l|c|l|}
+\hline
+\textbf{Category} & \textbf{AQI range} & \textbf{Health impact} \\ \hline
+Good & 0--50 & Minimal impact \\
+Satisfactory & 51--100 & Minor breathing discomfort to sensitive people \\
+Moderate & 101--200 & Discomfort to people with lung or heart disease \\
+Poor & 201--300 & Breathing discomfort to most people on prolonged exposure \\
+Very Poor & 301--400 & Respiratory illness on prolonged exposure \\
+Severe & 401--500 & Affects healthy people; serious impact on the ill \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Decision Trees}
+A regression tree recursively splits the feature space. At each node it chooses the feature $j$ and threshold $s$ that minimize the squared error of the two child regions:
+\begin{equation}
+\min_{j,s}\Big[\sum_{x_i \in R_1(j,s)} (y_i - \bar{y}_{R_1})^2 + \sum_{x_i \in R_2(j,s)} (y_i - \bar{y}_{R_2})^2\Big]
+\end{equation}
+A deep tree has low bias but high variance: small changes in data can change its structure.
+
+\subsection{Random Forest}
+A Random Forest \cite{breiman2001} averages $B$ trees, each trained on a bootstrap sample of the data, with a random subset of features considered at each split:
+\begin{equation}
+\hat{f}_{RF}(\mathbf{x}) = \frac{1}{B}\sum_{b=1}^{B} T_b(\mathbf{x})
+\end{equation}
+For trees with variance $\sigma^2$ and pairwise correlation $\rho$, the variance of the average is:
+\begin{equation}
+\operatorname{Var}\big(\hat{f}_{RF}\big) = \rho\,\sigma^2 + \frac{1-\rho}{B}\,\sigma^2
+\end{equation}
+More trees reduce the second term, and feature and sample sub-sampling reduce $\rho$. The hyperparameters therefore control the bias--variance trade-off, which is what PSO tunes.
+
+\subsection{Particle Swarm Optimization Fundamentals}
+PSO \cite{kennedy1995} maintains a swarm of particles. Each particle $i$ has a position $\mathbf{x}_i$ (a candidate solution), a velocity $\mathbf{v}_i$, a personal best position $\mathbf{p}_i$ and access to the swarm's global best $\mathbf{g}$.
+
+\noindent\textbf{Algorithm 1: Basic Particle Swarm Optimization}
+\begin{algorithmic}
+\State Initialize positions $\mathbf{x}_i$ and velocities $\mathbf{v}_i$ randomly
+\State Evaluate fitness; set $\mathbf{p}_i \gets \mathbf{x}_i$ and $\mathbf{g} \gets \arg\min f(\mathbf{p}_i)$
+\For{iteration $k = 1$ to $K$}
+  \For{each particle $i$}
+    \State Update velocity $\mathbf{v}_i$
+    \State Update position $\mathbf{x}_i \gets \mathbf{x}_i + \mathbf{v}_i$
+    \State Evaluate $f(\mathbf{x}_i)$; update $\mathbf{p}_i$ if improved
+  \EndFor
+  \State Update $\mathbf{g}$ to the best personal best
+\EndFor
+\State \Return $\mathbf{g}$
+\end{algorithmic}
+
+\noindent\textbf{Representation:} Each particle encodes one complete set of hyperparameters as a point in a continuous space.
+
+\noindent\textbf{Fitness Function:} The quality of a particle is the validation error of the model it encodes. Lower is better.
+
+\noindent\textbf{Velocity Update:} Combines momentum, attraction to the personal best and attraction to the global best:
+\begin{equation}
+\mathbf{v}_i^{k+1} = w\,\mathbf{v}_i^{k} + c_1 \mathbf{r}_1 \odot (\mathbf{p}_i - \mathbf{x}_i^{k}) + c_2 \mathbf{r}_2 \odot (\mathbf{g} - \mathbf{x}_i^{k})
+\end{equation}
+
+\noindent\textbf{Position Update:}
+\begin{equation}
+\mathbf{x}_i^{k+1} = \mathbf{x}_i^{k} + \mathbf{v}_i^{k+1}
+\end{equation}
+where $w$ is the inertia weight, $c_1, c_2$ are the cognitive and social coefficients, $\mathbf{r}_1, \mathbf{r}_2 \sim U(0,1)^d$, and $\odot$ is element-wise multiplication.
+
+\subsection{Evaluation Metrics}
+We use multiple metrics for a comprehensive evaluation.
+
+\lead{Root Mean Square Error:}
+\begin{equation}
+RMSE = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}
+\end{equation}
+
+\lead{Mean Absolute Error:}
+\begin{equation}
+MAE = \frac{1}{n}\sum_{i=1}^{n}|y_i - \hat{y}_i|
+\end{equation}
+
+\lead{R-squared:}
+\begin{equation}
+R^2 = 1 - \frac{\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}{\sum_{i=1}^{n}(y_i - \bar{y})^2}
+\end{equation}
+
+\lead{Mean Absolute Percentage Error:}
+\begin{equation}
+MAPE = \frac{100\%}{n}\sum_{i=1}^{n}\left|\frac{y_i - \hat{y}_i}{y_i}\right|
+\end{equation}
+
+\lead{Category metrics:} Both the observed and predicted AQI are mapped to the six CPCB categories, and accuracy, macro precision, macro recall and macro F1 are computed:
+\begin{equation}
+F1 = \frac{2 \cdot Precision \cdot Recall}{Precision + Recall}
+\end{equation}
+
+\lead{Alert AUC:} The area under the ROC curve for detecting days with AQI above 300 (\emph{Very Poor} or worse), using the predicted AQI as the score.
+
+%================================================================ 0.4
+\section{Nature-Inspired Algorithms: Detailed Study}
+
+\subsection{Overview of Nature-Inspired Optimization}
+Nature-inspired algorithms mimic biological, physical or social phenomena to solve hard optimization problems. These metaheuristics offer several advantages over gradient-based methods:
+\begin{itemize}
+\item No requirement for gradient information
+\item Effective for non-convex, multi-modal objectives
+\item Robust to noise and discontinuities in the objective
+\item Natural parallel evaluation of many candidate solutions
+\item Ability to escape poor local optima
+\end{itemize}
+No single optimizer is best for every problem \cite{wolpert1997}, so the choice of algorithm should match the structure of the problem.
+
+\subsection{Particle Swarm Optimization: In-Depth Analysis}
+
+\topic{Biological Inspiration}
+PSO was inspired by the flocking of birds and the schooling of fish \cite{kennedy1995}. Key concepts:
+\begin{itemize}
+\item \textbf{Individual memory:} Each bird remembers the best location it has found (personal best)
+\item \textbf{Social learning:} Birds share information, so the flock knows the best location found so far (global best)
+\item \textbf{Momentum:} Birds do not change direction instantly; they keep part of their previous velocity
+\item \textbf{Emergence:} No leader is needed; good solutions emerge from simple local rules
+\end{itemize}
+
+\topic{Particle Encoding Scheme}
+Each particle is a 38-dimensional vector: 6 coordinates for Random Forest hyperparameters and 32 feature switches, one per input feature. Every coordinate lives in $[0,1]$. The hyperparameter coordinates are decoded to the real range, with integer parameters rounded:
+\begin{equation}
+\theta_j = L_j + u_j\,(U_j - L_j), \qquad u_j \in [0,1]
+\end{equation}
+Encoding in the unit hypercube means that a tree count (hundreds) and a feature fraction (0.1 to 1) move at comparable speeds.
+
+The feature switches use a threshold transfer function, which turns the continuous position into a binary include/exclude decision:
+\begin{equation}
+s_f = \begin{cases} 1 & \text{if } u_f \ge 0.5 \\ 0 & \text{otherwise} \end{cases}, \qquad f = 1, \dots, 32
+\end{equation}
+If fewer than 3 switches are on, the 3 features with the highest $u_f$ are kept, so a particle never describes an empty model. Because the velocity is clamped at 0.2, a switch can only flip after the particle has moved consistently in one direction, which keeps the feature subset stable from one iteration to the next.
+
+\begin{table}[H]
+\centering
+\caption{Particle structure for Random Forest optimization}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Dimension} & \textbf{Hyperparameter} & \textbf{Range} & \textbf{Type} \\ \hline
+1 & n\_estimators (number of trees) & [50, 300] & Integer \\
+2 & max\_depth (maximum tree depth) & [3, 30] & Integer \\
+3 & min\_samples\_split & [2, 20] & Integer \\
+4 & min\_samples\_leaf & [1, 15] & Integer \\
+5 & max\_features (fraction per split) & [0.1, 1.0] & Continuous \\
+6 & max\_samples (bootstrap fraction) & [0.4, 1.0] & Continuous \\
+7--38 & Feature switches (one per feature) & \{0, 1\} & Binary (threshold) \\ \hline
+\end{tabular}
+\end{table}
+
+\topic{Inertia Weight}
+\textbf{Linearly decreasing inertia:} Used in our implementation \cite{shi1998}
+\begin{equation}
+w_k = w_{start} - (w_{start} - w_{end})\,\frac{k}{K-1}
+\end{equation}
+\begin{itemize}
+\item Large $w$ early (0.9): particles keep momentum and explore widely
+\item Small $w$ late (0.4): particles slow down and refine around the best region
+\end{itemize}
+\lead{Alternative Methods:}
+\begin{itemize}
+\item Constant inertia: a single fixed $w$
+\item Constriction factor \cite{clerc2002}: velocity scaled by $\chi$ to guarantee convergence
+\item Adaptive inertia: $w$ adjusted from swarm diversity or success rate
+\end{itemize}
+
+\topic{Velocity Clamping}
+Without limits, velocities can grow until particles fly out of the search space. Each component is clamped:
+\begin{equation}
+v_{ij} \gets \min\big(\max(v_{ij}, -v_{max}),\, v_{max}\big), \qquad v_{max} = 0.2
+\end{equation}
+
+\topic{Boundary Handling}
+\textbf{Reflection:} A particle that crosses a boundary is reflected back inside and its velocity component is reversed:
+\begin{equation}
+x_{ij} \gets \begin{cases} -x_{ij} & \text{if } x_{ij} < 0 \\ 2 - x_{ij} & \text{if } x_{ij} > 1 \end{cases}, \qquad v_{ij} \gets -v_{ij}
+\end{equation}
+Simple clipping would pile particles up on the walls and reduce diversity, so reflection is used.
+
+\topic{Convergence Analysis}
+PSO convergence depends on:
+\begin{itemize}
+\item Swarm size: larger swarms explore more but cost more evaluations
+\item Inertia weight: high inertia explores, low inertia exploits
+\item Acceleration coefficients: $c_1$ favours individual search, $c_2$ favours collective search
+\end{itemize}
+Clerc and Kennedy \cite{clerc2002} showed that particle trajectories are stable when
+\begin{equation}
+0 < c_1 + c_2 < 4\,(1 + w), \qquad |w| < 1
+\end{equation}
+Our settings ($w \le 0.9$, $c_1 + c_2 = 3$) satisfy this condition.
+
+\subsection{Genetic Algorithm}
+GA \cite{holland1975} evolves a population of chromosomes using selection, crossover and mutation inspired by natural evolution. Gaussian mutation, for example:
+\begin{equation}
+gene' = gene + \mathcal{N}(0, \sigma^2)
+\end{equation}
+\lead{Advantages:} Flexible encoding, strong global search\\
+\lead{Disadvantages:} Many operators and parameters to choose, slower convergence on continuous problems
+
+\subsection{Ant Colony Optimization}
+ACO \cite{dorigo1996} models the foraging of ants using pheromone trails. The probability of moving from node $i$ to $j$ is:
+\begin{equation}
+p_{ij} = \frac{[\tau_{ij}]^{\alpha}[\eta_{ij}]^{\beta}}{\sum_{k \in allowed}[\tau_{ik}]^{\alpha}[\eta_{ik}]^{\beta}}
+\end{equation}
+\lead{Applications:} Routing, scheduling, feature selection; best suited to discrete, path-like problems
+
+\subsection{Simulated Annealing}
+SA \cite{kirkpatrick1983} mimics metallurgical annealing. A worse solution is accepted with probability:
+\begin{equation}
+P(accept) = e^{-\Delta E / T}
+\end{equation}
+where $T$ decreases over time.\\
+\lead{Advantages:} Simple, escapes local minima\\
+\lead{Disadvantages:} Single-solution search, slow convergence, sensitive to the cooling schedule
+
+\subsection{Differential Evolution}
+DE \cite{storn1997} creates mutants from vector differences:
+\begin{equation}
+\mathbf{v}_i = \mathbf{x}_{r1} + F\,(\mathbf{x}_{r2} - \mathbf{x}_{r3})
+\end{equation}
+\lead{Advantages:} Very effective for continuous optimization\\
+\lead{Disadvantages:} Needs a reasonably large population
+
+\subsection{Why PSO for Random Forest Optimization?}
+We chose PSO over the alternatives because:
+\begin{enumerate}
+\item \textbf{Expensive fitness:} Each evaluation trains five forests. PSO shares information between particles, so each new evaluation is guided by all earlier ones.
+\item \textbf{Continuous encoding:} The unit-hypercube encoding suits PSO's velocity model and handles both integer and continuous hyperparameters.
+\item \textbf{Few control parameters:} Only $w$, $c_1$, $c_2$, swarm size and iterations, compared with GA's selection, crossover and mutation choices.
+\item \textbf{No gradient:} The validation error is noisy and stepped because of integer rounding, which gradient methods cannot handle.
+\item \textbf{Parallel evaluation:} All particles in an iteration can be evaluated independently.
+\end{enumerate}
+
+\subsection{Hybrid Approaches}
+Recent research explores hybrid algorithms:
+\begin{itemize}
+\item GA-PSO: genetic operators applied to the swarm to maintain diversity
+\item PSO with local search: gradient-free local refinement around the global best
+\item Surrogate-assisted PSO: a cheap model of the fitness function reduces the number of expensive evaluations
+\end{itemize}
+Future work may explore these approaches.

@@ -1,0 +1,323 @@
+{
+  "data": {
+    "city": "Delhi",
+    "raw_days": 4196,
+    "date_range": [
+      "2015-05-01",
+      "2026-10-25"
+    ],
+    "missing_pct": {
+      "AQI": 0.62,
+      "temp_max": 0.0,
+      "temp_min": 0.0,
+      "temp_mean": 0.0,
+      "rain": 0.0,
+      "humidity": 0.0,
+      "wind_max": 0.0,
+      "wind_mean": 0.0,
+      "pressure": 0.0,
+      "radiation": 0.0,
+      "dew_point": 0.0,
+      "wind_dir_sin": 0.0,
+      "wind_dir_cos": 0.0
+    },
+    "aqi_missing_days": 26,
+    "model_samples": 4141,
+    "train_samples": 3115,
+    "test_samples": 1026,
+    "train_range": [
+      "2015-05-30",
+      "2023-12-31"
+    ],
+    "test_range": [
+      "2024-01-01",
+      "2026-10-24"
+    ],
+    "n_features": 32
+  },
+  "pso_config": {
+    "n_particles": 12,
+    "n_iterations": 25,
+    "w_start": 0.9,
+    "w_end": 0.4,
+    "c1": 1.5,
+    "c2": 1.5,
+    "v_max": 0.2
+  },
+  "baseline_params": {
+    "n_estimators": 100,
+    "max_depth": null,
+    "min_samples_split": 2,
+    "min_samples_leaf": 1,
+    "max_features": 1.0,
+    "max_samples": null
+  },
+  "tuned_params": {
+    "n_estimators": 224,
+    "max_depth": 18,
+    "min_samples_split": 8,
+    "min_samples_leaf": 2,
+    "max_features": 0.799,
+    "max_samples": 0.592
+  },
+  "tuned_features": [
+    "AQI",
+    "temp_max",
+    "rain",
+    "wind_max",
+    "radiation",
+    "wind_dir_sin",
+    "wind_dir_cos",
+    "AQI_lag_1",
+    "AQI_roll_mean_3",
+    "AQI_roll_mean_30",
+    "AQI_change_1",
+    "wind_mean_change_1",
+    "rain_3d",
+    "dow_cos"
+  ],
+  "dropped_features": [
+    "temp_min",
+    "temp_mean",
+    "humidity",
+    "wind_mean",
+    "pressure",
+    "dew_point",
+    "AQI_lag_2",
+    "AQI_lag_3",
+    "AQI_lag_7",
+    "AQI_roll_mean_7",
+    "AQI_roll_mean_14",
+    "AQI_roll_std_7",
+    "temp_min_change_1",
+    "pressure_change_1",
+    "dew_point_change_1",
+    "doy_sin",
+    "doy_cos",
+    "dow_sin"
+  ],
+  "hp_only_params": {
+    "n_estimators": 291,
+    "max_depth": 17,
+    "min_samples_split": 6,
+    "min_samples_leaf": 3,
+    "max_features": 0.797,
+    "max_samples": 0.655
+  },
+  "hp_only_cv_rmse": 40.65764585727106,
+  "baseline_cv_rmse": 41.51602923251908,
+  "tuned_cv_rmse": 39.72880777215137,
+  "cv_improvement_pct": 4.304894984917774,
+  "test_comparison": {
+    "Persistence": {
+      "RMSE": 40.2076602828255,
+      "MAE": 28.969785575048732,
+      "MedAE": 21.0,
+      "MAPE_pct": 17.15690167988789,
+      "R2": 0.8324774272268528,
+      "Accuracy": 0.6881091617933723,
+      "Precision_macro": 0.5473637937033305,
+      "Recall_macro": 0.5478532478039403,
+      "F1_macro": 0.547607109660404,
+      "F1_weighted": 0.6881028517006264,
+      "AUC_high_pollution": 0.9779865040934991
+    },
+    "Default RF": {
+      "RMSE": 33.85324328187411,
+      "MAE": 25.38087719298246,
+      "MedAE": 19.39,
+      "MAPE_pct": 15.892478758219816,
+      "R2": 0.881243799331912,
+      "Accuracy": 0.7192982456140351,
+      "Precision_macro": 0.6065623078475483,
+      "Recall_macro": 0.555262864548964,
+      "F1_macro": 0.5680685847041187,
+      "F1_weighted": 0.719639038368258,
+      "AUC_high_pollution": 0.9861475733945252
+    },
+    "PSO RF (hyperparameters only)": {
+      "RMSE": 33.57006465081865,
+      "MAE": 25.1352613916242,
+      "MedAE": 18.87218262360011,
+      "MAPE_pct": 15.73769622672373,
+      "R2": 0.883222254732011,
+      "Accuracy": 0.7153996101364523,
+      "Precision_macro": 0.6110962854918081,
+      "Recall_macro": 0.5517961483212424,
+      "F1_macro": 0.5664657821988075,
+      "F1_weighted": 0.716317845921535,
+      "AUC_high_pollution": 0.986510575682736
+    },
+    "PSO-tuned RF": {
+      "RMSE": 33.76776943406277,
+      "MAE": 25.14628763264879,
+      "MedAE": 18.08156849970475,
+      "MAPE_pct": 15.650617403331365,
+      "R2": 0.8818427218698663,
+      "Accuracy": 0.7144249512670565,
+      "Precision_macro": 0.621823196895947,
+      "Recall_macro": 0.5522824391866543,
+      "F1_macro": 0.5685083438815998,
+      "F1_weighted": 0.7151103074645984,
+      "AUC_high_pollution": 0.9857716067388782
+    }
+  },
+  "rmse_improvement_pct": 0.2524834831914053,
+  "default_rf_test_rmse_over_10_forest_seeds": {
+    "mean": 33.80862842703535,
+    "sd": 0.14601201290301727
+  },
+  "pso_summary": {
+    "cv_rmse_mean": 39.94153884329135,
+    "cv_rmse_best": 39.72880777215137,
+    "test_rmse_mean": 33.471000000000004,
+    "test_rmse_sd_between_runs": 0.21785660421479225
+  },
+  "random_search_summary": {
+    "cv_rmse_mean": 40.5418325336139,
+    "cv_rmse_best": 40.041276681782186,
+    "test_rmse_mean": 33.9574,
+    "test_rmse_sd_between_runs": 0.3290095743287717
+  },
+  "pso_hp_only_summary": {
+    "cv_rmse_mean": 40.700677224703966,
+    "cv_rmse_best": 40.65764585727106,
+    "test_rmse_mean": 33.5498,
+    "test_rmse_sd_between_runs": 0.04473477394600383
+  },
+  "random_search_hp_only_summary": {
+    "cv_rmse_mean": 40.82101056013646,
+    "cv_rmse_best": 40.75434449114115,
+    "test_rmse_mean": 33.6198,
+    "test_rmse_sd_between_runs": 0.034186254547699683
+  },
+  "feature_selection_frequency": {
+    "AQI": 1.0,
+    "temp_max": 0.4,
+    "temp_min": 0.4,
+    "temp_mean": 0.2,
+    "rain": 0.8,
+    "humidity": 0.0,
+    "wind_max": 0.8,
+    "wind_mean": 0.6,
+    "pressure": 0.0,
+    "radiation": 1.0,
+    "dew_point": 0.0,
+    "wind_dir_sin": 1.0,
+    "wind_dir_cos": 0.4,
+    "AQI_lag_1": 0.4,
+    "AQI_lag_2": 0.0,
+    "AQI_lag_3": 0.4,
+    "AQI_lag_7": 0.2,
+    "AQI_roll_mean_3": 0.4,
+    "AQI_roll_mean_7": 0.8,
+    "AQI_roll_mean_14": 0.2,
+    "AQI_roll_mean_30": 0.8,
+    "AQI_roll_std_7": 0.2,
+    "AQI_change_1": 0.8,
+    "temp_min_change_1": 0.2,
+    "pressure_change_1": 0.6,
+    "dew_point_change_1": 0.2,
+    "wind_mean_change_1": 1.0,
+    "rain_3d": 1.0,
+    "doy_sin": 0.4,
+    "doy_cos": 0.2,
+    "dow_sin": 0.4,
+    "dow_cos": 1.0
+  },
+  "bootstrap_tuned_vs_hp_only": {
+    "observed_gain": -0.1977047832441201,
+    "ci95": [
+      -0.6657984822347673,
+      0.2649701304444436
+    ],
+    "prob_gain_positive": 0.1992
+  },
+  "significance_tuned_vs_hp_only": {
+    "mean_sq_error_reduction": -13.313011891879658,
+    "t_statistic": -0.8339524077966937,
+    "t_p_value": 0.40450210461202274,
+    "wilcoxon_statistic": 253114.0,
+    "wilcoxon_p_value": 0.277430021361609,
+    "days_tuned_better_pct": 48.148148148148145
+  },
+  "bootstrap_tuned_vs_default": {
+    "observed_gain": 0.08547384781133616,
+    "ci95": [
+      -0.4144686336570551,
+      0.5940411393855621
+    ],
+    "prob_gain_positive": 0.6172
+  },
+  "residuals": {
+    "mean": -7.716897152069794,
+    "sd": 32.890212888093394,
+    "skewness": -0.16001574015623518,
+    "kurtosis": 4.673265094134117,
+    "shapiro_p": 1.2717065189973956e-10,
+    "share_beyond_2sd_pct": 4.970760233918129
+  },
+  "significance": {
+    "mean_sq_error_reduction": 5.779828149730535,
+    "t_statistic": 0.310136930751052,
+    "t_p_value": 0.756519874125603,
+    "wilcoxon_statistic": 259268.0,
+    "wilcoxon_p_value": 0.6614517900330866,
+    "days_tuned_better_pct": 49.902534113060426
+  },
+  "benchmarks": {
+    "Sphere": {
+      "best_mean": 1.855541808864967e-17,
+      "best_sd": 3.209861782560058e-17,
+      "best_min": 1.0358272397386896e-18
+    },
+    "Rastrigin": {
+      "best_mean": 2.9852324356850657,
+      "best_sd": 1.4071241627721245,
+      "best_min": 1.9899181141865796
+    },
+    "Rosenbrock": {
+      "best_mean": 1.0950820646254438,
+      "best_sd": 0.19446327018450776,
+      "best_min": 0.8443141160544929
+    }
+  },
+  "runtime_seconds": {
+    "PSO": [
+      1132.5,
+      849.4,
+      909.2,
+      1476.5,
+      1486.4
+    ],
+    "Random search": [
+      743.7,
+      736.7,
+      707.4,
+      706.2,
+      736.3
+    ],
+    "PSO (hyperparameters only)": [
+      1456.1,
+      2278.7,
+      2080.0,
+      2794.0,
+      1953.7
+    ],
+    "Random search (hyperparameters only)": [
+      1296.6,
+      1290.5,
+      1345.0,
+      1240.8,
+      1362.4
+    ]
+  },
+  "bootstrap_tuned_vs_persistence": {
+    "observed_gain": 6.4398908487627295,
+    "ci95": [
+      4.8514545913888885,
+      8.057641317286095
+    ],
+    "prob_gain_positive": 1.0
+  }
+}
